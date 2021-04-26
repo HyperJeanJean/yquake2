@@ -479,6 +479,9 @@ endif
 	@echo "===> Building quake2"
 	${Q}mkdir -p release
 	$(MAKE) release/quake2
+	@echo "===> Copying required data files"
+	${Q}mkdir -p release/baseq2
+	cp -r ./stuff/baseq2/* ./release/baseq2/
 
 ifeq ($(YQ2_OSTYPE), Darwin)
 build/client/%.o : %.c

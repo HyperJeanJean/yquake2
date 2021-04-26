@@ -3455,7 +3455,11 @@ InitRandom(void)
 	for (i = 0; i < num_layers; ++i)
 	{
 		pic = NULL;
+#ifdef _WIN32
 		Com_sprintf(image_name, sizeof(image_name), "pics\\bluenoise\\LDR_RGB1_%d", i);
+#else
+		Com_sprintf(image_name, sizeof(image_name), "pics/bluenoise/LDR_RGB1_%d", i);
+#endif
 		loaded = LoadSTB(image_name, "png", &pic, &width, &height);
 		PT_ASSERT(width == PT_BLUENOISE_TEXTURE_WIDTH);
 		PT_ASSERT(height == PT_BLUENOISE_TEXTURE_HEIGHT);
