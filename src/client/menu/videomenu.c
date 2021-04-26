@@ -84,18 +84,26 @@ GetRenderer(void)
 	{
 		return 3;
 	}
-	else
+	else if (Q_stricmp(vid_renderer->string, "glpt") == 0)
 	{
 		return 4;
+	}
+	else
+	{
+		return 5;
 	}
 #else
 	else if (Q_stricmp(vid_renderer->string, "soft") == 0)
 	{
 		return 2;
 	}
-	else
+	else if (Q_stricmp(vid_renderer->string, "glpt") == 0)
 	{
 		return 3;
+	}
+	else
+	{
+		return 4;
 	}
 #endif
 }
@@ -177,10 +185,20 @@ ApplyChanges(void *unused)
 			Cvar_Set("vid_renderer", "soft");
 			restart = true;
 		}
+		else if (s_renderer_list.curvalue == 4)
+		{
+			Cvar_Set("vid_renderer", "glpt");
+			restart = true;
+		}
 #else
 		else if (s_renderer_list.curvalue == 2)
 		{
 			Cvar_Set("vid_renderer", "soft");
+			restart = true;
+		}
+		else if (s_renderer_list.curvalue == 3)
+		{
+			Cvar_Set("vid_renderer", "glpt");
 			restart = true;
 		}
 #endif
@@ -303,6 +321,7 @@ VID_MenuInit(void)
 			"[Vulkan    ]",
 #endif
 			"[Software  ]",
+			"[Pathtraced]",
 			CUSTOM_MODE_NAME,
 			0
 	};

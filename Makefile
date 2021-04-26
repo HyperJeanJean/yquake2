@@ -75,6 +75,9 @@ WITH_REFVK:=yes
 # case of presence.
 CONFIG_FILE:=config.mk
 
+# Run the GLSL validator for the pathracing shaders
+RUN_GLSL_VALIDATOR:=no
+
 # ----------
 
 # In case a of a configuration file being present, we'll just use it
@@ -140,6 +143,15 @@ endif
 # UBSAN includes DEBUG
 ifdef UBSAN
 DEBUG=1
+endif
+
+# Pathtracing GLSL validator
+ifeq ($(RUN_GLSL_VALIDATOR),yes)
+ifeq ($(OSTYPE), Windows)
+GLSL_VALIDATOR := glslangValidator.exe -S frag -
+else
+GLSL_VALIDATOR := glslangValidator -S frag -
+endif
 endif
 
 # ----------
@@ -372,12 +384,12 @@ endif
 # ----------
 
 # Phony targets
-.PHONY : all client game icon server ref_gl1 ref_gl3 ref_soft ref_vk
+.PHONY : all client game icon server ref_gl1 ref_gl3 ref_soft ref_vk ref_glpt
 
 # ----------
 
 # Builds everything
-all: config client server game ref_gl1 ref_gl3 ref_soft ref_vk
+all: config client server game ref_gl1 ref_gl3 ref_soft ref_vk ref_glpt
 
 # ----------
 
@@ -411,21 +423,31 @@ endif
 clean:
 	@echo "===> CLEAN"
 	${Q}rm -Rf build release/*
+	${Q}rm -Rf ./src/client/refresh/generated/*
 
 cleanall:
 	@echo "===> CLEAN"
 	${Q}rm -Rf build release
+	${Q}rm -Rf ./src/client/refresh/generated
 
 # ----------
 
 # The client
 ifeq ($(YQ2_OSTYPE), Windows)
 client:
+	@echo "===> Processing shader sourcecode"
+ifeq ($(RUN_GLSL_VALIDATOR),yes)
+	@echo "#version 330" | cat - ./src/client/refresh/glpt/pathtracer.glsl | $(GLSL_VALIDATOR)
+endif
+	sh ./stringifyshaders.sh
 	@echo "===> Building yquake2.exe"
 	${Q}mkdir -p release
 	$(MAKE) release/yquake2.exe
 	@echo "===> Building quake2.exe Wrapper"
 	$(MAKE) release/quake2.exe
+	@echo "===> Copying required data files"
+	${Q}mkdir -p release/baseq2
+	cp -r ./stuff/baseq2/* ./release/baseq2/
 
 build/client/%.o: %.c
 	@echo "===> CC $<"
@@ -449,6 +471,11 @@ endif
 else # not Windows
 
 client:
+	@echo "===> Processing shader sourcecode"
+ifeq ($(RUN_GLSL_VALIDATOR),yes)
+	@echo "#version 330" | cat - ./src/client/refresh/glpt/pathtracer.glsl | $(GLSL_VALIDATOR)
+endif
+	sh ./stringifyshaders.sh
 	@echo "===> Building quake2"
 	${Q}mkdir -p release
 	$(MAKE) release/quake2
@@ -596,6 +623,44 @@ release/ref_gl1.so : LDFLAGS += -shared -lGL
 endif # OS specific ref_gl1 stuff
 
 build/ref_gl1/%.o: %.c
+	@echo "===> CC $<"
+	${Q}mkdir -p $(@D)
+	${Q}$(CC) -c $(CFLAGS) $(SDLCFLAGS) $(INCLUDE) -o $@ $<
+
+# ----------
+
+# The OpenGL with pathtracing renderer lib
+
+ifeq ($(YQ2_OSTYPE), Windows)
+
+ref_glpt:
+	@echo "===> Building ref_glpt.dll"
+	$(MAKE) release/ref_glpt.dll
+
+release/ref_glpt.dll : LDFLAGS += -lopengl32 -shared
+
+else ifeq ($(YQ2_OSTYPE), Darwin)
+
+ref_glpt:
+	@echo "===> Building ref_glpt.dylib"
+	$(MAKE) release/ref_glpt.dylib
+
+
+release/ref_glpt.dylib : LDFLAGS += -shared -framework OpenGL
+
+else # not Windows or Darwin
+
+ref_glpt:
+	@echo "===> Building ref_glpt.so"
+	$(MAKE) release/ref_glpt.so
+
+
+release/ref_glpt.so : CFLAGS += -fPIC
+release/ref_glpt.so : LDFLAGS += -shared -lGL
+
+endif # OS specific ref_glpt stuff
+
+build/ref_glpt/%.o: %.c
 	@echo "===> CC $<"
 	${Q}mkdir -p $(@D)
 	${Q}$(CC) -c $(CFLAGS) $(SDLCFLAGS) $(INCLUDE) -o $@ $<
@@ -917,6 +982,40 @@ endif
 
 # ----------
 
+REFGLPT_OBJS_ := \
+	src/client/refresh/glpt/qgl.o \
+	src/client/refresh/glpt/glpt_draw.o \
+	src/client/refresh/glpt/glpt_image.o \
+	src/client/refresh/glpt/glpt_light.o \
+	src/client/refresh/glpt/glpt_lightmap.o \
+	src/client/refresh/glpt/glpt_main.o \
+	src/client/refresh/glpt/glpt_mesh.o \
+	src/client/refresh/glpt/glpt_misc.o \
+	src/client/refresh/glpt/glpt_model.o \
+	src/client/refresh/glpt/glpt_scrap.o \
+	src/client/refresh/glpt/glpt_surf.o \
+	src/client/refresh/glpt/glpt_warp.o \
+	src/client/refresh/glpt/glpt_sdl.o \
+	src/client/refresh/glpt/glpt_md2.o \
+	src/client/refresh/glpt/glpt_sp2.o \
+	src/client/refresh/glpt/glpt_pathtracing.o \
+	src/client/refresh/files/pcx.o \
+	src/client/refresh/files/stb.o \
+	src/client/refresh/files/wal.o \
+	src/client/refresh/files/pvs.o \
+	src/common/shared/shared.o \
+	src/common/md4.o
+
+ifeq ($(YQ2_OSTYPE), Windows)
+REFGLPT_OBJS_ += \
+	src/backends/windows/shared/hunk.o
+else # not Windows
+REFGLPT_OBJS_ += \
+	src/backends/unix/shared/hunk.o
+endif
+
+# ----------
+
 REFGL3_OBJS_ := \
 	src/client/refresh/gl3/gl3_draw.o \
 	src/client/refresh/gl3/gl3_image.o \
@@ -1076,6 +1175,7 @@ endif
 # Rewrite pathes to our object directory.
 CLIENT_OBJS = $(patsubst %,build/client/%,$(CLIENT_OBJS_))
 REFGL1_OBJS = $(patsubst %,build/ref_gl1/%,$(REFGL1_OBJS_))
+REFGLPT_OBJS = $(patsubst %,build/ref_glpt/%,$(REFGLPT_OBJS_))
 REFGL3_OBJS = $(patsubst %,build/ref_gl3/%,$(REFGL3_OBJS_))
 REFSOFT_OBJS = $(patsubst %,build/ref_soft/%,$(REFSOFT_OBJS_))
 REFVK_OBJS = $(patsubst %,build/ref_vk/%,$(REFVK_OBJS_))
@@ -1088,6 +1188,7 @@ GAME_OBJS = $(patsubst %,build/baseq2/%,$(GAME_OBJS_))
 CLIENT_DEPS= $(CLIENT_OBJS:.o=.d)
 GAME_DEPS= $(GAME_OBJS:.o=.d)
 REFGL1_DEPS= $(REFGL1_OBJS:.o=.d)
+REFGLPT_DEPS= $(REFGLPT_OBJS:.o=.d)
 REFGL3_DEPS= $(REFGL3_OBJS:.o=.d)
 REFSOFT_DEPS= $(REFSOFT_OBJS:.o=.d)
 REFVK_DEPS= $(REFVK_OBJS:.o=.d)
@@ -1097,6 +1198,7 @@ SERVER_DEPS= $(SERVER_OBJS:.o=.d)
 -include $(CLIENT_DEPS)
 -include $(GAME_DEPS)
 -include $(REFGL1_DEPS)
+-include $(REFGLPT_DEPS)
 -include $(REFGL3_DEPS)
 -include $(REFVK_DEPS)
 -include $(SERVER_DEPS)
@@ -1144,6 +1246,22 @@ else
 release/ref_gl1.so : $(REFGL1_OBJS)
 	@echo "===> LD $@"
 	${Q}$(CC) $(REFGL1_OBJS) $(LDFLAGS) $(SDLLDFLAGS) -o $@
+endif
+
+# release/ref_glpt.so
+ifeq ($(YQ2_OSTYPE), Windows)
+release/ref_glpt.dll : $(REFGLPT_OBJS)
+	@echo "===> LD $@"
+	${Q}$(CC) $(REFGLPT_OBJS) $(LDFLAGS) $(DLL_SDLLDFLAGS) -o $@
+	$(Q)strip $@
+else ifeq ($(YQ2_OSTYPE), Darwin)
+release/ref_glpt.dylib : $(REFGLPT_OBJS)
+	@echo "===> LD $@"
+	${Q}$(CC) $(REFGLPT_OBJS) $(LDFLAGS) $(SDLLDFLAGS) -o $@
+else
+release/ref_glpt.so : $(REFGLPT_OBJS)
+	@echo "===> LD $@"
+	${Q}$(CC) $(REFGLPT_OBJS) $(LDFLAGS) $(SDLLDFLAGS) -o $@
 endif
 
 # release/ref_gl3.so
