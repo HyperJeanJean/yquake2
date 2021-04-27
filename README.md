@@ -9,6 +9,10 @@ clean. It works perfectly on modern processors and operating systems. Yamagi
 Quake II runs on nearly all common platforms; including FreeBSD, Linux, NetBSD,
 OpenBSD, Windows and macOS (experimental).
 
+This branch also includes the OpenGL pathtracing renderer made by Edd Biddulph
+(https://amietia.com/q2pt.html) with minor tweaks to make it work with newer
+versions of Yamagi Quake II
+
 This code is built upon Icculus Quake II, which itself is based on Quake II
 3.21. Yamagi Quake II is released under the terms of the GPL version 2. See the
 LICENSE file for further information.
