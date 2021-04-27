@@ -2513,20 +2513,31 @@ R_DrawPathtracerDepthPrePass(void)
 		glDepthRange(gldepthmin, gldepthmin + 0.3 * (gldepthmax - gldepthmin));
 
 		/* This transformation is a direct copy of the lefthand-weapon logic in R_DrawAliasModel. */
+		extern void R_MYgluPerspective(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar);
+
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadIdentity();
+
 		if (gl_lefthand->value == 1.0F)
 		{
-			extern void R_MYgluPerspective(GLdouble fovy, GLdouble aspect,
-					GLdouble zNear, GLdouble zFar);
-
-			glMatrixMode(GL_PROJECTION);
-			glPushMatrix();
-			glLoadIdentity();
 			glScalef(-1, 1, 1);
-			R_MYgluPerspective(r_newrefdef.fov_y,
-					(float)r_newrefdef.width / r_newrefdef.height,
-					4, 4096);
-			glMatrixMode(GL_MODELVIEW);
+		}
 
+		float dist = (r_farsee->value == 0) ? 4096.0f : 8192.0f;
+
+		if (r_gunfov->value < 0)
+		{
+			R_MYgluPerspective(r_newrefdef.fov_y, (float)r_newrefdef.width / r_newrefdef.height, 4, dist);
+		}
+		else
+		{
+			R_MYgluPerspective(r_gunfov->value, (float)r_newrefdef.width / r_newrefdef.height, 4, dist);
+		}
+		glMatrixMode(GL_MODELVIEW);
+
+		if (gl_lefthand->value == 1.0F)
+		{
 			glCullFace(GL_BACK);
 		}
 
@@ -2539,13 +2550,11 @@ R_DrawPathtracerDepthPrePass(void)
 		glPopMatrix();
 
 		/* This transformation is a direct copy of the lefthand-weapon logic in R_DrawAliasModel. */
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+		glMatrixMode(GL_MODELVIEW);
 		if (gl_lefthand->value == 1.0F)
-		{
-			glMatrixMode(GL_PROJECTION);
-			glPopMatrix();
-			glMatrixMode(GL_MODELVIEW);
 			glCullFace(GL_FRONT);
-		}
 
 		glDepthRange(gldepthmin, gldepthmax);
 	}
