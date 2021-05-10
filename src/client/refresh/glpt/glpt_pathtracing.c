@@ -93,7 +93,9 @@ static cvar_t *gl_pt_sky_enable 							= NULL;
 static cvar_t *gl_pt_sky_samples 						= NULL;
 static cvar_t *gl_pt_ao_enable 							= NULL;
 static cvar_t *gl_pt_ao_radius 							= NULL;
-static cvar_t *gl_pt_ao_color 							= NULL;
+static cvar_t *gl_pt_ao_color_red						= NULL;
+static cvar_t *gl_pt_ao_color_green						= NULL;
+static cvar_t *gl_pt_ao_color_blue						= NULL;
 static cvar_t *gl_pt_ao_samples 							= NULL;
 static cvar_t *gl_pt_translucent_surfaces_enable	= NULL;
 static cvar_t *gl_pt_lightstyles_enable 				= NULL;
@@ -2934,7 +2936,7 @@ R_UpdatePathtracerForCurrentFrame(void)
 	/* Update the configuration uniform variables. */
 	qglUseProgramObjectARB(pt_program_handle);
 	qglUniform1fARB(pt_ao_radius_loc, gl_pt_ao_radius->value);
-	qglUniform3fARB(pt_ao_color_loc, gl_pt_ao_color->value, gl_pt_ao_color->value, gl_pt_ao_color->value);
+	qglUniform3fARB(pt_ao_color_loc, gl_pt_ao_color_red->value, gl_pt_ao_color_green->value, gl_pt_ao_color_blue->value);
 	qglUniform1fARB(pt_bounce_factor_loc, gl_pt_bounce_factor->value);
 	qglUniform1iARB(pt_frame_counter_loc, r_framecount);	
 	qglUniform3fARB(pt_view_origin_loc, r_newrefdef.vieworg[0], r_newrefdef.vieworg[1], r_newrefdef.vieworg[2]);
@@ -3758,7 +3760,9 @@ R_InitPathtracing(void)
 	GET_PT_CVAR(gl_pt_sky_samples, "1")
 	GET_PT_CVAR(gl_pt_ao_enable, "0")
 	GET_PT_CVAR(gl_pt_ao_radius, "150")
-	GET_PT_CVAR(gl_pt_ao_color, "1")
+	GET_PT_CVAR(gl_pt_ao_color_red, "1")
+	GET_PT_CVAR(gl_pt_ao_color_green, "1")
+	GET_PT_CVAR(gl_pt_ao_color_blue, "1")
 	GET_PT_CVAR(gl_pt_ao_samples, "1")
 	GET_PT_CVAR(gl_pt_translucent_surfaces_enable, "1")
 	GET_PT_CVAR(gl_pt_lightstyles_enable, "1")
